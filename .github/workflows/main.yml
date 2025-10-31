@@ -15,7 +15,7 @@ jobs:
           
       - uses: actions/cache@v3
         with:
-          path: GameJam31October2025/Library
+          path: Library
           key: Library-WebGL
           restore-keys: Library-
           
@@ -26,7 +26,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: WebGL 
-          projectPath: GameJam31October2025
+          projectPath: .
           
       - uses: actions/upload-artifact@v4
         with:
