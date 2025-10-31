@@ -28,7 +28,7 @@ jobs:
           targetPlatform: WebGL 
           projectPath: GameJam31October2025
           
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v3.1.2
         with:
           name: Build-WebGL
           path: build/WebGL
