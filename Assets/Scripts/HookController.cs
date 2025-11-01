@@ -57,6 +57,13 @@ public class HookController : MonoBehaviour
     [Tooltip("Показывать крюк и цепь даже когда не брошен (в руке игрока)")]
     public bool showHookAtRest = true;
     
+    [Header("Hook Size Settings")]
+    [Tooltip("Размер крюка (масштаб спрайта). Меньше значение = меньше крюк")]
+    [Range(0.01f, 1f)]
+    public float hookScale = 0.15f; // Маленький размер крюка
+    [Tooltip("Сохранять размер крюка постоянным во время рендеринга (не масштабировать с камерой)")]
+    public bool maintainConstantSize = true;
+    
     private SpriteRenderer spriteRenderer;
     private LineRenderer lineRenderer;
     private bool isFlying = false;
@@ -116,6 +123,9 @@ public class HookController : MonoBehaviour
         {
             spriteRenderer.color = new Color(1f, 0.4f, 0.3f, 1f);
         }
+        
+        // Устанавливаем размер крюка
+        ApplyHookScale();
         
         // Создаем LineRenderer для линии
         if (lineRenderer == null)
@@ -296,6 +306,25 @@ public class HookController : MonoBehaviour
                 lineRenderer.enabled = false;
             }
         }
+        
+        // Применяем размер крюка
+        ApplyHookScale();
+    }
+    
+    /// <summary>
+    /// Применяет настройки размера крюка (масштаб)
+    /// </summary>
+    void ApplyHookScale()
+    {
+        // Всегда применяем установленный размер
+        Vector3 targetScale = new Vector3(hookScale, hookScale, 1f);
+        transform.localScale = targetScale;
+        
+        if (maintainConstantSize)
+        {
+            // В Update будем постоянно проверять и восстанавливать размер
+            // чтобы он не менялся во время рендеринга
+        }
     }
     
     /// <summary>
@@ -308,6 +337,9 @@ public class HookController : MonoBehaviour
         // Крюк находится рядом с игроком (в руке)
         transform.position = playerTransform.position + Vector3.right * 0.3f; // Немного справа от игрока
         transform.rotation = Quaternion.identity; // Не вращаем в покое
+        
+        // Убеждаемся что размер крюка установлен правильно
+        ApplyHookScale();
         
         // Показываем крюк
         if (spriteRenderer != null)
@@ -371,15 +403,25 @@ public class HookController : MonoBehaviour
         bezierStartPos = handPosition;
         bezierEndPos = targetWorldPos;
         
-        // Вычисляем среднюю точку дуги (как в HookThrow)
+        // ======================= ИСПРАВЛЕННЫЙ РАСЧЁТ ДУГИ =======================
+
+// Ограничиваем дальность броска
+        // Определяем направление до цели
         Vector3 dir = targetWorldPos - handPosition;
-        Vector3 perpendicular = Vector3.Cross(dir.normalized, Vector3.forward);
-        float direction = castDirectionRight ? 1f : -1f;
-        
-        // Средняя точка дуги (чуть смещена в сторону и вверх)
-        bezierMidPoint = handPosition + dir / 2 + perpendicular * direction * 2f + Vector3.up * 1f;
-        
-        // Вычисляем примерную длину кривой Безье (для нормализации скорости)
+        float distance = dir.magnitude;
+
+// Используем maxChainLength только для расчёта формы дуги (высота)
+        float clampedDistance = Mathf.Min(distance, maxChainLength);
+        float height = Mathf.Clamp(clampedDistance * 0.3f, 1f, 4f);
+
+// Определяем сторону дуги (влево/вправо)
+        float direction = (targetWorldPos.x > playerCenter.x) ? 1f : -1f;
+        Vector3 perpendicular = Vector3.Cross(Vector3.forward, dir.normalized);
+
+// Средняя точка дуги (от руки к цели) — теперь всегда доходит до точки тапа!
+        bezierEndPos = targetWorldPos;
+        bezierMidPoint = handPosition + dir * 0.5f + perpendicular * direction * height + Vector3.up * height * 0.7f;
+
         // Приблизительно: расстояние старт->середина + середина->конец
         float distToMid = Vector3.Distance(bezierStartPos, bezierMidPoint);
         float distMidToEnd = Vector3.Distance(bezierMidPoint, bezierEndPos);
@@ -418,8 +460,8 @@ public class HookController : MonoBehaviour
         spriteRenderer.color = Color.white; // Белый цвет для спрайта
         spriteRenderer.sortingOrder = 5;
         
-        // Убеждаемся что крюк масштабирован правильно для видимости
-        transform.localScale = Vector3.one;
+        // Устанавливаем размер крюка согласно настройкам
+        ApplyHookScale();
         
         Debug.Log($"Крюк активирован:");
         Debug.Log($"  - Позиция: {transform.position}");
@@ -527,6 +569,17 @@ public class HookController : MonoBehaviour
                 UpdateLineRenderer();
             }
         }
+        
+        // Поддерживаем постоянный размер крюка во время рендеринга
+        if (maintainConstantSize)
+        {
+            Vector3 currentScale = transform.localScale;
+            Vector3 targetScale = new Vector3(hookScale, hookScale, 1f);
+            if (currentScale != targetScale)
+            {
+                transform.localScale = targetScale;
+            }
+        }
     }
     
     /// <summary>
@@ -608,7 +661,7 @@ public class HookController : MonoBehaviour
         }
         
         // Движемся по прямой к руке (кратчайшая траектория)
-        transform.position = Vector3.MoveTowards(transform.position, handPosition, retractSpeed * Time.deltaTime);
+        transform.position = Vector3.Lerp(transform.position, handPosition, Time.deltaTime * retractSpeed * 0.3f);
     }
     
     /// <summary>
@@ -712,6 +765,8 @@ public class HookController : MonoBehaviour
     {
         if (lineRenderer == null) return;
         
+        lineRenderer.textureMode = LineTextureMode.Stretch;
+        
         int points = Mathf.Max(chainPoints, 2); // Минимум 2 точки
         
         // Во время полета (Stretching/Falling) или возврата - прямая линия
@@ -720,8 +775,11 @@ public class HookController : MonoBehaviour
             // РОВНАЯ ПРЯМАЯ ЛИНИЯ от руки до крюка
             for (int i = 0; i < points; i++)
             {
-                float t = i / (float)(points - 1); // От 0 до 1
+                float t = i / (float)(points - 1);
                 Vector3 linearPos = Vector3.Lerp(start, end, t);
+                // добавим лёгкое провисание при полёте
+                float sag = Mathf.Sin(Mathf.PI * t) * chainSagAmount * 0.2f;
+                linearPos.y -= sag;
                 lineRenderer.SetPosition(i, linearPos);
             }
             return;
@@ -905,6 +963,8 @@ public class HookController : MonoBehaviour
         if (loadedSprite != null)
         {
             spriteRenderer.sprite = loadedSprite;
+            // Применяем размер крюка после загрузки спрайта
+            ApplyHookScale();
             Debug.Log("✓ Спрайт крюка загружен из Sprites/hook");
         }
         else
@@ -976,9 +1036,12 @@ public class HookController : MonoBehaviour
         
         Sprite sprite = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
         spriteRenderer.sprite = sprite;
-        spriteRenderer.color = new Color(1f, 0.4f, 0.3f, 1f); // Яркий красно-оранжевый цвет крюка
+            spriteRenderer.color = new Color(1f, 0.4f, 0.3f, 1f); // Яркий красно-оранжевый цвет крюка
         
-        Debug.Log($"Спрайт крюка создан: размер={size}x{size}, цвет={spriteRenderer.color}");
+        // Применяем размер крюка
+        ApplyHookScale();
+        
+        Debug.Log($"Спрайт крюка создан: размер={size}x{size}, цвет={spriteRenderer.color}, scale={hookScale}");
     }
     
     public bool IsActive => isFlying || isRetracting;
