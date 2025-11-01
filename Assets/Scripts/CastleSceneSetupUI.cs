@@ -16,6 +16,49 @@ public class CastleSceneSetupUI : MonoBehaviour
     [Tooltip("Префаб крюка (если не назначен, создастся автоматически)")]
     public GameObject hookPrefab;
     
+    [Header("Auto Setup")]
+    [Tooltip("Автоматически настроить сцену при старте (для билда)")]
+    public bool autoSetupOnStart = true;
+    
+    void Awake()
+    {
+        // Настройка в Awake для раннего выполнения
+        if (autoSetupOnStart)
+        {
+            // Проверяем, есть ли уже Canvas с объектами
+            Canvas canvas = FindObjectOfType<Canvas>();
+            if (canvas == null || canvas.transform.childCount == 0)
+            {
+                Debug.Log("Автоматическая настройка сцены в Awake...");
+                SetupScene();
+            }
+        }
+    }
+    
+    void Start()
+    {
+        // Дополнительная проверка в Start на случай если Awake не сработал
+        if (autoSetupOnStart)
+        {
+            Canvas canvas = FindObjectOfType<Canvas>();
+            if (canvas == null || canvas.transform.childCount == 0)
+            {
+                Debug.LogWarning("Canvas не найден в Start, пытаюсь создать...");
+                SetupScene();
+            }
+            else
+            {
+                // Убеждаемся что Canvas активен и включен
+                if (!canvas.gameObject.activeSelf || !canvas.enabled)
+                {
+                    Debug.LogWarning("Canvas найден, но неактивен! Активирую...");
+                    canvas.gameObject.SetActive(true);
+                    canvas.enabled = true;
+                }
+            }
+        }
+    }
+    
     [ContextMenu("Setup Castle Scene UI")]
     public void SetupScene()
     {
@@ -56,7 +99,96 @@ public class CastleSceneSetupUI : MonoBehaviour
         // 10. Создаем GameManager
         CastleGameManagerUI gameManager = SetupGameManager(canvas, player, hook, touchController, spawner, arrow);
         
+        // 11. Настраиваем вертикальную ориентацию для WebGL
+        SetupWebGLPortrait();
+        
+        // Финальная проверка - убеждаемся что все видимо
+        VerifySetup(canvas, background);
+        
         Debug.Log("=== Настройка сцены завершена! Все объекты на Canvas ===");
+    }
+    
+    /// <summary>
+    /// Настраивает вертикальную ориентацию для WebGL билда
+    /// </summary>
+    void SetupWebGLPortrait()
+    {
+        // Убеждаемся что ориентация установлена
+        Screen.orientation = ScreenOrientation.Portrait;
+        Screen.autorotateToLandscapeLeft = false;
+        Screen.autorotateToLandscapeRight = false;
+        Screen.autorotateToPortrait = true;
+        Screen.autorotateToPortraitUpsideDown = false;
+        
+        // Добавляем компонент WebGLPortraitEnforcer если его нет
+        GameObject enforcerObj = GameObject.Find("WebGLPortraitEnforcer");
+        if (enforcerObj == null)
+        {
+            enforcerObj = new GameObject("WebGLPortraitEnforcer");
+            enforcerObj.AddComponent<WebGLPortraitEnforcer>();
+        }
+        else if (enforcerObj.GetComponent<WebGLPortraitEnforcer>() == null)
+        {
+            enforcerObj.AddComponent<WebGLPortraitEnforcer>();
+        }
+        
+        Debug.Log("✓ Вертикальная ориентация настроена для WebGL");
+    }
+    
+    /// <summary>
+    /// Проверяет что все элементы правильно настроены и видимы
+    /// </summary>
+    void VerifySetup(Canvas canvas, Image background)
+    {
+        Debug.Log("=== Проверка настройки ===");
+        
+        if (canvas == null)
+        {
+            Debug.LogError("❌ Canvas отсутствует!");
+            return;
+        }
+        
+        Debug.Log($"✓ Canvas: активен={canvas.gameObject.activeSelf}, включен={canvas.enabled}, режим={canvas.renderMode}");
+        
+        if (background == null)
+        {
+            Debug.LogError("❌ Фон отсутствует!");
+        }
+        else
+        {
+            Debug.Log($"✓ Фон: активен={background.gameObject.activeSelf}, включен={background.enabled}, спрайт={background.sprite != null}");
+        }
+        
+        // Проверяем что Canvas находится в корне сцены
+        if (canvas.transform.parent != null)
+        {
+            Debug.LogWarning($"⚠ Canvas находится не в корне сцены (родитель: {canvas.transform.parent.name})");
+        }
+        
+        // Проверяем что Canvas имеет правильный порядок сортировки
+        Debug.Log($"✓ Canvas sortingOrder: {canvas.sortingOrder}");
+        
+        // Проверяем количество дочерних элементов
+        int childCount = canvas.transform.childCount;
+        Debug.Log($"✓ Дочерних элементов на Canvas: {childCount}");
+        
+        if (childCount == 0)
+        {
+            Debug.LogError("❌ На Canvas нет дочерних элементов! Сцена пустая!");
+        }
+        
+        // Проверяем камеру
+        Camera mainCam = Camera.main;
+        if (mainCam != null)
+        {
+            Debug.Log($"✓ Камера: активна={mainCam.gameObject.activeSelf}, включена={mainCam.enabled}");
+            Debug.Log($"  - clearFlags: {mainCam.clearFlags}");
+            Debug.Log($"  - backgroundColor: {mainCam.backgroundColor}");
+        }
+        else
+        {
+            Debug.LogWarning("⚠ Main Camera не найдена (не критично для ScreenSpaceOverlay)");
+        }
     }
     
     Canvas SetupCanvas()
@@ -73,6 +205,7 @@ public class CastleSceneSetupUI : MonoBehaviour
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080, 1920); // Вертикальное разрешение
             scaler.matchWidthOrHeight = 0.5f;
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             
             canvasObj.AddComponent<GraphicRaycaster>();
             
@@ -83,6 +216,40 @@ public class CastleSceneSetupUI : MonoBehaviour
                 canvasRect = canvasObj.AddComponent<RectTransform>();
             }
             canvasRect.sizeDelta = new Vector2(1080, 1920);
+            canvasRect.anchorMin = Vector2.zero;
+            canvasRect.anchorMax = Vector2.one;
+            canvasRect.offsetMin = Vector2.zero;
+            canvasRect.offsetMax = Vector2.zero;
+            
+            // Убеждаемся что Canvas видим и активен
+            canvasObj.SetActive(true);
+            canvas.enabled = true;
+        }
+        else
+        {
+            // Проверяем настройки существующего Canvas
+            if (canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            {
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                Debug.Log("Canvas renderMode изменен на ScreenSpaceOverlay");
+            }
+            
+            CanvasScaler scaler = canvas.GetComponent<CanvasScaler>();
+            if (scaler == null)
+            {
+                scaler = canvas.gameObject.AddComponent<CanvasScaler>();
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1080, 1920);
+                scaler.matchWidthOrHeight = 0.5f;
+            }
+            
+            if (canvas.GetComponent<GraphicRaycaster>() == null)
+            {
+                canvas.gameObject.AddComponent<GraphicRaycaster>();
+            }
+            
+            canvas.gameObject.SetActive(true);
+            canvas.enabled = true;
         }
         
         // Создаем EventSystem если его нет
@@ -93,7 +260,23 @@ public class CastleSceneSetupUI : MonoBehaviour
             eventSystemObj.AddComponent<StandaloneInputModule>();
         }
         
-        Debug.Log("✓ Canvas создан");
+        // Убеждаемся что камера существует (для совместимости)
+        if (Camera.main == null)
+        {
+            GameObject camObj = new GameObject("Main Camera");
+            Camera cam = camObj.AddComponent<Camera>();
+            camObj.tag = "MainCamera";
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.3f, 0.5f, 0.7f); // Синий фон
+            cam.orthographic = true;
+            cam.orthographicSize = 10f;
+            camObj.AddComponent<AudioListener>();
+        }
+        
+        Debug.Log("✓ Canvas создан/проверен");
+        Debug.Log($"  - RenderMode: {canvas.renderMode}");
+        Debug.Log($"  - Enabled: {canvas.enabled}");
+        Debug.Log($"  - Active: {canvas.gameObject.activeSelf}");
         return canvas;
     }
     
@@ -119,6 +302,10 @@ public class CastleSceneSetupUI : MonoBehaviour
             bgImage.color = Color.white;
             bgImage.sprite = CreateBackgroundSprite();
             bgImage.type = Image.Type.Simple;
+            
+            // Убеждаемся что фон видим
+            bgImage.enabled = true;
+            bgObj.SetActive(true);
         }
         else
         {
@@ -128,9 +315,22 @@ public class CastleSceneSetupUI : MonoBehaviour
             {
                 bgImage = bgObj.AddComponent<Image>();
             }
+            
+            // Обновляем настройки существующего фона
+            if (bgImage.sprite == null)
+            {
+                bgImage.sprite = CreateBackgroundSprite();
+            }
+            bgImage.type = Image.Type.Simple;
+            bgImage.color = Color.white;
+            bgImage.enabled = true;
+            bgObj.SetActive(true);
         }
         
-        Debug.Log("✓ Фоновое изображение создано");
+        Debug.Log($"✓ Фоновое изображение создано/проверено");
+        Debug.Log($"  - Sprite: {(bgImage.sprite != null ? "есть" : "ОТСУТСТВУЕТ")}");
+        Debug.Log($"  - Enabled: {bgImage.enabled}");
+        Debug.Log($"  - Active: {bgObj.activeSelf}");
         return bgImage;
     }
     
