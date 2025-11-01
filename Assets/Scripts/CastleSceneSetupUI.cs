@@ -673,11 +673,6 @@ public class CastleSceneSetupUI : MonoBehaviour
             Image background = canvas.transform.Find("Background")?.GetComponent<Image>();
             if (background != null) uiManager.backgroundImage = background;
             
-            Text scoreText = SetupScoreText(canvas);
-            Text monstersText = SetupMonstersText(canvas);
-            
-            if (scoreText != null) uiManager.scoreText = scoreText;
-            if (monstersText != null) uiManager.monstersKilledText = monstersText;
             uiManager.canvas = canvas;
             
             Debug.Log("✓ UI Manager создан");
