@@ -8,11 +8,10 @@ public class CastleGameManager : MonoBehaviour
     public static CastleGameManager Instance { get; private set; }
     
     [Header("References")]
-    public CastlePlayerController player;
+    public CastlePlayer player;
     public HookController hook;
     public CastleGameTouchController touchController;
     public MonsterSpawner monsterSpawner;
-    public ArrowIndicator arrowIndicator;
     
     [Header("Castle Settings")]
     public Vector2 castlePosition = Vector2.zero;
@@ -82,7 +81,7 @@ public class CastleGameManager : MonoBehaviour
         {
             touchController.hookController = hook;
             touchController.playerTransform = player != null ? player.transform : null;
-            touchController.arrowIndicator = arrowIndicator;
+            //touchController.arrowIndicator = arrowIndicator;
         }
         
         // Настраиваем спавнер монстров

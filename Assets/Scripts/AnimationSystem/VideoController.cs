@@ -4,7 +4,7 @@ using UnityEngine.Video;
 
 public class VideoController : MonoBehaviour
 {
-    [SerializeField] private DefaultAsset folderName;
+    [SerializeField] private string folderName;
     [SerializeField] private string newVideoName; // Название видео без расширения
     private VideoPlayer videoPlayer;
     private string currentVideoName;
@@ -72,7 +72,7 @@ public class VideoController : MonoBehaviour
     {
         if (videoPlayer == null) return;
 
-        string path = System.IO.Path.Combine(Application.streamingAssetsPath, "Videos", folderName.name, currentVideoName + ".mov");
+        string path = System.IO.Path.Combine(Application.streamingAssetsPath, "Videos", folderName, currentVideoName + ".mov");
 
         videoPlayer.url = path;
         videoPlayer.isLooping = !playOnce;
