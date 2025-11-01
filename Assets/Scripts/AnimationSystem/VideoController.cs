@@ -1,4 +1,3 @@
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Video;
 
@@ -71,7 +70,7 @@ public class VideoController : MonoBehaviour
     private void PlayVideo(bool playOnce)
     {
         if (videoPlayer == null) return;
-
+        
         string path = System.IO.Path.Combine(Application.streamingAssetsPath, "Videos", folderName, currentVideoName + ".mov");
 
         videoPlayer.url = path;
