@@ -1,4 +1,4 @@
-const cacheName = "BaldejGame-BaldejGame-0.0.9";
+const cacheName = "BaldejGame-BaldejGame-0.0.10";
 const contentToCache = [
     "Build/WebGL.loader.js",
     "Build/WebGL.framework.js",
