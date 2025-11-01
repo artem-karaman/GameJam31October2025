@@ -1,75 +1,68 @@
 using UnityEngine;
-using System.Collections;
 
 /// <summary>
-/// Контроллер монстра, который ходит вокруг замка
+/// Контроллер монстра со SpriteRenderer
 /// </summary>
+[RequireComponent(typeof(SpriteRenderer))]
 public class MonsterController : MonoBehaviour
 {
-    [Header("References")]
-    public SpriteRenderer spriteRenderer;
-    public Animator animator;
-    
     [Header("Movement")]
     public float moveSpeed = 1.5f;
     public float patrolRadius = 5f;
     public Vector2 centerPosition = Vector2.zero;
-    public bool enableScreenWrap = true; // Включает обтекание экрана
+    public bool enableScreenWrap = true;
     
     [Header("Animation")]
     public RuntimeAnimatorController[] animatorControllers;
     private int _currentAnimatorIndex = 0;
     
-    private Vector2 currentTarget;
+    private SpriteRenderer spriteRenderer;
+    private Animator animator;
+    private Vector3 currentTarget;
     private bool isDead = false;
     private Camera mainCamera;
+    
+    void Awake()
+    {
+        SetupMonsterComponents();
+    }
     
     void Start()
     {
         mainCamera = Camera.main;
-        SetupMonster();
-        SetRandomTarget();
+        
+        // Если цель не установлена, устанавливаем её
+        if (currentTarget == Vector3.zero)
+        {
+            SetRandomTarget();
+        }
     }
     
-    void SetupMonster()
+    /// <summary>
+    /// Автоматически настраивает компоненты монстра
+    /// </summary>
+    [ContextMenu("Setup Monster Components")]
+    public void SetupMonsterComponents()
     {
+        spriteRenderer = GetComponent<SpriteRenderer>();
         if (spriteRenderer == null)
         {
-            spriteRenderer = GetComponent<SpriteRenderer>();
-            if (spriteRenderer == null)
-            {
-                spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
-                CreateDefaultSprite();
-            }
+            spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
         }
         
-        if (animator == null)
-        {
-            animator = GetComponent<Animator>();
-            if (animator == null)
-            {
-                animator = gameObject.AddComponent<Animator>();
-            }
-        }
+        spriteRenderer.sortingOrder = 4;
+        
+        // Animator (опционально)
+        animator = GetComponent<Animator>();
+        // Не создаем автоматически, только если уже есть
         
         // Применяем аниматор контроллер
         UpdateAnimator();
         
-        // Добавляем коллайдер для обнаружения попаданий
-        CircleCollider2D collider = GetComponent<CircleCollider2D>();
-        if (collider == null)
+        // Создаем спрайт только если он не назначен вручную
+        if (spriteRenderer.sprite == null)
         {
-            collider = gameObject.AddComponent<CircleCollider2D>();
-            collider.radius = 0.4f;
-            // Делаем триггер, чтобы не было физического столкновения, только обнаружение
-            collider.isTrigger = true;
-        }
-        
-        // Убеждаемся, что у объекта есть тег "Monster" для более точного обнаружения
-        if (!gameObject.CompareTag("Monster"))
-        {
-            // Если тег не существует, создаем его (в рантайме это не работает, но для документации)
-            // Лучше установить тег в редакторе или через префаб
+            CreateDefaultSprite();
         }
     }
     
@@ -79,7 +72,7 @@ public class MonsterController : MonoBehaviour
         
         MoveTowardsTarget();
         
-        // Применяем обтекание экрана (wrap-around)
+        // Применяем обтекание экрана
         if (enableScreenWrap)
         {
             WrapAroundScreen();
@@ -88,38 +81,42 @@ public class MonsterController : MonoBehaviour
     
     void MoveTowardsTarget()
     {
-        transform.position = Vector2.MoveTowards(transform.position, currentTarget, moveSpeed * Time.deltaTime);
+        if (spriteRenderer == null) return;
+        
+        // Движение в мировых координатах
+        transform.position = Vector3.MoveTowards(
+            transform.position, 
+            currentTarget, 
+            moveSpeed * Time.deltaTime
+        );
         
         // Поворачиваем спрайт в сторону движения
-        if (transform.position.x < currentTarget.x)
+        float currentX = transform.position.x;
+        float targetX = currentTarget.x;
+        
+        if (currentX < targetX)
         {
-            spriteRenderer.flipX = false;
+            transform.localScale = new Vector3(1, 1, 1); // Смотрим вправо
         }
-        else if (transform.position.x > currentTarget.x)
+        else if (currentX > targetX)
         {
-            spriteRenderer.flipX = true;
+            transform.localScale = new Vector3(-1, 1, 1); // Смотрим влево
         }
         
-        // Если достигли цели, выбираем новую
-        if (Vector2.Distance(transform.position, currentTarget) < 0.1f)
+        // Если достигли цели или очень близко, выбираем новую
+        float distanceToTarget = Vector3.Distance(transform.position, currentTarget);
+        if (distanceToTarget < 0.2f)
         {
             SetRandomTarget();
         }
     }
     
-    /// <summary>
-    /// Обтекание экрана - монстр появляется с противоположной стороны
-    /// </summary>
     void WrapAroundScreen()
     {
-        if (mainCamera == null)
-        {
-            mainCamera = Camera.main;
-            if (mainCamera == null) return;
-        }
+        if (mainCamera == null) return;
         
-        // Получаем границы видимой области камеры
-        float screenHeight = mainCamera.orthographicSize * 2f;
+        // Получаем границы экрана в мировых координатах
+        float screenHeight = 2f * mainCamera.orthographicSize;
         float screenWidth = screenHeight * mainCamera.aspect;
         
         float leftBound = mainCamera.transform.position.x - screenWidth / 2f;
@@ -130,36 +127,46 @@ public class MonsterController : MonoBehaviour
         // Если монстр вышел за левый край - появляется справа
         if (pos.x < leftBound)
         {
-            pos.x = rightBound;
+            pos.x = rightBound - 0.5f; // Немного отступ от края
             transform.position = pos;
-            // Обновляем цель, чтобы монстр продолжил движение
             SetRandomTarget();
         }
         // Если монстр вышел за правый край - появляется слева
         else if (pos.x > rightBound)
         {
-            pos.x = leftBound;
+            pos.x = leftBound + 0.5f; // Немного отступ от края
             transform.position = pos;
-            // Обновляем цель, чтобы монстр продолжил движение
             SetRandomTarget();
         }
     }
     
     void SetRandomTarget()
     {
-        // Выбираем случайную точку на окружности вокруг замка
-        // Монстры ходят на уровне земли (y около -8)
+        // Выбираем случайную точку на окружности вокруг центра замка
         float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
-        float groundLevel = -8f; // Уровень земли
-        currentTarget = new Vector2(
-            centerPosition.x + Mathf.Cos(angle) * patrolRadius,
-            groundLevel + Mathf.Sin(angle) * patrolRadius * 0.3f // Небольшое изменение Y
+        float groundLevel = centerPosition.y; // Уровень земли
+        
+        // Вычисляем целевую позицию на окружности
+        float radiusInWorld = patrolRadius;
+        currentTarget = new Vector3(
+            centerPosition.x + Mathf.Cos(angle) * radiusInWorld,
+            groundLevel + Mathf.Sin(angle) * radiusInWorld * 0.3f,
+            0
         );
+        
+        // Ограничиваем целевую позицию в разумных пределах экрана
+        if (mainCamera != null)
+        {
+            float screenHeight = 2f * mainCamera.orthographicSize;
+            float screenWidth = screenHeight * mainCamera.aspect;
+            float leftBound = mainCamera.transform.position.x - screenWidth / 2f;
+            float rightBound = mainCamera.transform.position.x + screenWidth / 2f;
+            
+            currentTarget.x = Mathf.Clamp(currentTarget.x, leftBound + 1f, rightBound - 1f);
+            currentTarget.y = Mathf.Clamp(currentTarget.y, groundLevel - 1f, groundLevel + 3f);
+        }
     }
     
-    /// <summary>
-    /// Устанавливает аниматор контроллер по индексу
-    /// </summary>
     public void SetAnimatorController(int index)
     {
         if (animatorControllers != null && index >= 0 && index < animatorControllers.Length)
@@ -171,7 +178,7 @@ public class MonsterController : MonoBehaviour
     
     void UpdateAnimator()
     {
-        if (animatorControllers != null && animatorControllers.Length > 0)
+        if (animator != null && animatorControllers != null && animatorControllers.Length > 0)
         {
             int indexToUse = Mathf.Clamp(_currentAnimatorIndex, 0, animatorControllers.Length - 1);
             if (animatorControllers[indexToUse] != null)
@@ -181,12 +188,9 @@ public class MonsterController : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Убивает монстра (вызывается только при попадании крюка)
-    /// </summary>
     public void Die()
     {
-        if (isDead) return; // Уже мертв, не убиваем дважды
+        if (isDead) return;
         
         isDead = true;
         Debug.Log($"Монстр {gameObject.name} умирает от попадания крюка");
@@ -200,11 +204,10 @@ public class MonsterController : MonoBehaviour
         StartCoroutine(DeathAnimation());
     }
     
-    IEnumerator DeathAnimation()
+    System.Collections.IEnumerator DeathAnimation()
     {
-        // Простая анимация смерти - уменьшение и исчезновение
         float duration = 0.3f;
-        Vector2 startScale = transform.localScale;
+        Vector3 startScale = transform.localScale;
         Color startColor = spriteRenderer.color;
         
         float elapsed = 0f;
@@ -213,7 +216,7 @@ public class MonsterController : MonoBehaviour
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
             
-            transform.localScale = Vector2.Lerp(startScale, Vector2.zero, t);
+            transform.localScale = Vector3.Lerp(startScale, Vector3.zero, t);
             spriteRenderer.color = Color.Lerp(startColor, Color.clear, t);
             
             yield return null;
@@ -261,26 +264,17 @@ public class MonsterController : MonoBehaviour
         texture.SetPixels(pixels);
         texture.Apply();
         
-        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 64);
+        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f), 100f);
         spriteRenderer.sprite = sprite;
         spriteRenderer.color = Color.white;
     }
     
     public bool IsDead => isDead;
-    
     public int currentAnimatorIndex => _currentAnimatorIndex;
     
-    public void ResetMonster(Vector2 position, Vector2 center)
+    public Vector3 Position
     {
-        isDead = false;
-        centerPosition = center;
-        transform.position = position;
-        transform.localScale = Vector2.one;
-        if (spriteRenderer != null)
-        {
-            spriteRenderer.color = Color.white;
-        }
-        SetRandomTarget();
+        get { return transform.position; }
+        set { transform.position = value; }
     }
 }
-
