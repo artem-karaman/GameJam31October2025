@@ -190,6 +190,13 @@ public class MonsterController : MonoBehaviour
         
         isDead = true;
         Debug.Log($"Монстр {gameObject.name} умирает от попадания крюка");
+        
+        // Уведомляем UI Manager о смерти монстра
+        if (CastleUIManager.Instance != null)
+        {
+            CastleUIManager.Instance.OnMonsterKilled();
+        }
+        
         StartCoroutine(DeathAnimation());
     }
     
