@@ -20,8 +20,18 @@ public class MonsterController : MonoBehaviour
     public RuntimeAnimatorController[] animatorControllers;
     private int _currentAnimatorIndex = 0;
     
+    [Header("Audio")]
+    [Tooltip("Звук смерти монстра (проигрывается при вызове Die())")]
+    public AudioClip deathSound;
+    [Tooltip("Громкость звука смерти")]
+    [Range(0f, 1f)]
+    public float deathSoundVolume = 1f;
+    [Tooltip("Автоматически создавать AudioSource если его нет")]
+    public bool autoCreateAudioSource = true;
+    
     private SpriteRenderer spriteRenderer;
     private Animator animator;
+    private AudioSource audioSource;
     private Vector3 currentTarget;
     private bool isDead = false;
     private Camera mainCamera;
@@ -89,6 +99,27 @@ public class MonsterController : MonoBehaviour
         if (hitbox == null)
         {
             hitbox = gameObject.AddComponent<MonsterHitbox>();
+        }
+        
+        // Настраиваем AudioSource для звука смерти
+        SetupAudioSource();
+    }
+    
+    /// <summary>
+    /// Настраивает AudioSource для проигрывания звука смерти
+    /// </summary>
+    void SetupAudioSource()
+    {
+        if (autoCreateAudioSource)
+        {
+            audioSource = GetComponent<AudioSource>();
+            if (audioSource == null)
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+                audioSource.playOnAwake = false;
+                audioSource.spatialBlend = 0f; // 2D звук
+                audioSource.volume = 1f;
+            }
         }
     }
     
@@ -294,6 +325,9 @@ public class MonsterController : MonoBehaviour
         isDead = true;
         Debug.Log($"Монстр {gameObject.name} умирает от попадания крюка");
         
+        // Проигрываем звук смерти
+        PlayDeathSound();
+        
         // Уведомляем UI Manager о смерти монстра
         if (CastleUIManager.Instance != null)
         {
@@ -301,6 +335,52 @@ public class MonsterController : MonoBehaviour
         }
         
         StartCoroutine(DeathAnimation());
+    }
+    
+    /// <summary>
+    /// Проигрывает звук смерти монстра
+    /// </summary>
+    void PlayDeathSound()
+    {
+        if (deathSound == null)
+        {
+            Debug.LogWarning($"MonsterController: deathSound не назначен для {gameObject.name}");
+            return;
+        }
+        
+        // Пытаемся использовать AudioSource на монстре
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+        }
+        
+        if (audioSource != null)
+        {
+            audioSource.PlayOneShot(deathSound, deathSoundVolume);
+            Debug.Log($"MonsterController: Звук смерти воспроизведен через AudioSource на {gameObject.name}");
+        }
+        else
+        {
+            // Если AudioSource нет, используем PlayClipAtPoint
+            Vector3 soundPos = transform.position;
+            Camera mainCam = Camera.main;
+            if (mainCam != null)
+            {
+                AudioListener listener = mainCam.GetComponent<AudioListener>();
+                if (listener == null)
+                {
+                    Debug.LogWarning("MonsterController: На камере нет AudioListener! Звук может быть не слышен.");
+                }
+                // Если монстр далеко от камеры, играем звук ближе к камере
+                float distance = Vector3.Distance(transform.position, mainCam.transform.position);
+                if (distance > 20f)
+                {
+                    soundPos = mainCam.transform.position;
+                }
+            }
+            AudioSource.PlayClipAtPoint(deathSound, soundPos, deathSoundVolume);
+            Debug.Log($"MonsterController: Звук смерти воспроизведен через PlayClipAtPoint на позиции {soundPos}");
+        }
     }
     
     System.Collections.IEnumerator DeathAnimation()
