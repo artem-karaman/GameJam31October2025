@@ -463,10 +463,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: VictoryScreen
       objectReference: {fileID: 0}
-    - target: {fileID: 5941261433149354177, guid: c3675674cf12c4383a1f4c456661d380, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -589,12 +585,12 @@ MonoBehaviour:
   - monsterPrefab: {fileID: 138880326058325880, guid: e2fd9013a03d04386996e23b09848f65, type: 3}
     monsterTypeName: daemon
     spawnWeight: 2
-    poolMinSize: 4
+    poolMinSize: 6
     activeCount: 0
   - monsterPrefab: {fileID: 138880326058325880, guid: 7eb2d337566504bb8a23fbe65a578767, type: 3}
     monsterTypeName: daemon
     spawnWeight: 2
-    poolMinSize: 4
+    poolMinSize: 8
     activeCount: 0
   availableAnimators: []
 --- !u!4 &376893373
@@ -2594,10 +2590,11 @@ MonoBehaviour:
   retractSpeed: 15
   hookRadius: 0.6
   maxChainLength: 5
+  targetOffsetDown: 1
   arcHeight: 3
   arcPeakOffset: 0
-  lineThickness: 0.12
-  lineColor: {r: 0.8, g: 0.5, b: 0.2, a: 1}
+  lineThickness: 0.035
+  lineColor: {r: 0.7058824, g: 0.7058824, b: 0.7254902, a: 1}
   arcAngleDegrees: 90
   hookRotationSpeed: 360
   chainPoints: 20
