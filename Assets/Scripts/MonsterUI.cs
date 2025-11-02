@@ -28,7 +28,17 @@ public class MonsterUI : MonoBehaviour
     public RuntimeAnimatorController[] animatorControllers;
     private int _currentAnimatorIndex = 0;
     
+    [Header("Audio")]
+    [Tooltip("Звук смерти монстра (проигрывается при вызове Die())")]
+    public AudioClip deathSound;
+    [Tooltip("Громкость звука смерти")]
+    [Range(0f, 1f)]
+    public float deathSoundVolume = 1f;
+    [Tooltip("Автоматически создавать AudioSource если его нет")]
+    public bool autoCreateAudioSource = true;
+    
     private RectTransform rectTransform;
+    private AudioSource audioSource;
     private Vector2 currentTarget;
     private bool isDead = false;
     private Camera mainCamera;
@@ -118,6 +128,27 @@ public class MonsterUI : MonoBehaviour
         if (hitbox == null)
         {
             hitbox = gameObject.AddComponent<MonsterHitboxUI>();
+        }
+        
+        // Настраиваем AudioSource для звука смерти
+        SetupAudioSource();
+    }
+    
+    /// <summary>
+    /// Настраивает AudioSource для проигрывания звука смерти
+    /// </summary>
+    void SetupAudioSource()
+    {
+        if (autoCreateAudioSource)
+        {
+            audioSource = GetComponent<AudioSource>();
+            if (audioSource == null)
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+                audioSource.playOnAwake = false;
+                audioSource.spatialBlend = 0f; // 2D звук
+                audioSource.volume = 1f;
+            }
         }
     }
     
@@ -304,6 +335,9 @@ public class MonsterUI : MonoBehaviour
         isDead = true;
         Debug.Log($"Монстр {gameObject.name} умирает от попадания крюка");
         
+        // Проигрываем звук смерти
+        PlayDeathSound();
+        
         // Уведомляем UI Manager о смерти монстра
         if (CastleUIManager.Instance != null)
         {
@@ -311,6 +345,61 @@ public class MonsterUI : MonoBehaviour
         }
         
         StartCoroutine(DeathAnimation());
+    }
+    
+    /// <summary>
+    /// Проигрывает звук смерти монстра
+    /// </summary>
+    void PlayDeathSound()
+    {
+        if (deathSound == null)
+        {
+            Debug.LogWarning($"MonsterUI: deathSound не назначен для {gameObject.name}");
+            return;
+        }
+        
+        // Пытаемся использовать AudioSource на монстре
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+        }
+        
+        if (audioSource != null)
+        {
+            audioSource.PlayOneShot(deathSound, deathSoundVolume);
+            Debug.Log($"MonsterUI: Звук смерти воспроизведен через AudioSource на {gameObject.name}");
+        }
+        else
+        {
+            // Если AudioSource нет, используем PlayClipAtPoint
+            // Для UI элементов конвертируем позицию в мировые координаты
+            Camera mainCam = Camera.main;
+            Vector3 soundPos = mainCam != null ? mainCam.transform.position : Vector3.zero;
+            
+            if (mainCam != null && rectTransform != null)
+            {
+                // Конвертируем UI позицию в мировую
+                Canvas canvas = GetComponentInParent<Canvas>();
+                if (canvas != null)
+                {
+                    RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+                    if (canvasRect != null)
+                    {
+                        Vector2 screenPos = RectTransformUtility.WorldToScreenPoint(canvas.worldCamera ?? mainCam, rectTransform.anchoredPosition);
+                        soundPos = mainCam.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, mainCam.nearClipPlane + 1f));
+                    }
+                }
+                
+                AudioListener listener = mainCam.GetComponent<AudioListener>();
+                if (listener == null)
+                {
+                    Debug.LogWarning("MonsterUI: На камере нет AudioListener! Звук может быть не слышен.");
+                }
+            }
+            
+            AudioSource.PlayClipAtPoint(deathSound, soundPos, deathSoundVolume);
+            Debug.Log($"MonsterUI: Звук смерти воспроизведен через PlayClipAtPoint на позиции {soundPos}");
+        }
     }
     
     System.Collections.IEnumerator DeathAnimation()

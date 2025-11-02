@@ -34,6 +34,27 @@ public class CastleGameManagerUI : MonoBehaviour
         {
             monsterSpawner.CycleMonsterAnimations();
         }
+        
+        // Периодически проверяем победу (на случай если монстры исчезли другим способом)
+        // Проверяем не каждый кадр, а раз в секунду
+        if (Time.frameCount % 60 == 0 && CastleUIManager.Instance != null && monsterSpawner != null)
+        {
+            CheckVictoryCondition();
+        }
+    }
+    
+    /// <summary>
+    /// Проверяет условие победы (все монстры побеждены)
+    /// </summary>
+    void CheckVictoryCondition()
+    {
+        if (monsterSpawner == null || monsterSpawner.ActiveMonsters == null) return;
+        
+        // Если активных монстров нет и игра идет, проверяем победу
+        if (monsterSpawner.ActiveMonsters.Count == 0)
+        {
+            CastleUIManager.Instance?.CheckVictory();
+        }
     }
 }
 

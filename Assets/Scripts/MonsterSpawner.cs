@@ -45,6 +45,8 @@ public class MonsterSpawner : MonoBehaviour
     // Словарь для быстрого поиска типа монстра по GameObject
     private Dictionary<GameObject, GameObject> monsterTypeMap = new Dictionary<GameObject, GameObject>();
     
+    private bool isSpawningBlocked = false;
+    
     public List<GameObject> ActiveMonsters => activeMonsters;
     
     /// <summary>
@@ -531,7 +533,30 @@ public class MonsterSpawner : MonoBehaviour
     System.Collections.IEnumerator SpawnMonsterDelayed()
     {
         yield return new WaitForSeconds(1f);
-        SpawnMonster();
+        
+        // Не спавним, если спавн заблокирован
+        if (!isSpawningBlocked)
+        {
+            SpawnMonster();
+        }
+    }
+    
+    /// <summary>
+    /// Останавливает спавн новых монстров (используется после победы)
+    /// </summary>
+    public void StopSpawning()
+    {
+        isSpawningBlocked = true;
+        Debug.Log("MonsterSpawner: Спавн остановлен");
+    }
+    
+    /// <summary>
+    /// Возобновляет спавн монстров (используется при сбросе игры)
+    /// </summary>
+    public void ResumeSpawning()
+    {
+        isSpawningBlocked = false;
+        Debug.Log("MonsterSpawner: Спавн возобновлен");
     }
     
     [ContextMenu("Cycle Monster Animations")]
