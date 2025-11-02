@@ -143,8 +143,11 @@ public class CastleSceneSetup : MonoBehaviour
         // 7. Создаем спавнер монстров
         MonsterSpawner spawner = SetupMonsterSpawner();
         
-        // 8. Создаем GameManager и связываем все
-        CastleGameManager gameManager = SetupGameManager(player, hook, touchController, spawner);
+        // 8. Создаем UI Manager
+        CastleUIManager uiManager = SetupUIManager();
+        
+        // 9. Создаем GameManager и связываем все
+        CastleGameManager gameManager = SetupGameManager(player, hook, touchController, spawner, uiManager);
         
         Debug.Log("=== Настройка сцены завершена! Все объекты используют SpriteRenderer ===");
     }
@@ -350,8 +353,31 @@ public class CastleSceneSetup : MonoBehaviour
         return spawner;
     }
     
+    CastleUIManager SetupUIManager()
+    {
+        GameObject uiManagerObj = GameObject.Find("UIManager");
+        CastleUIManager uiManager;
+        
+        if (uiManagerObj == null)
+        {
+            uiManagerObj = new GameObject("UIManager");
+            uiManager = uiManagerObj.AddComponent<CastleUIManager>();
+        }
+        else
+        {
+            uiManager = uiManagerObj.GetComponent<CastleUIManager>();
+            if (uiManager == null)
+            {
+                uiManager = uiManagerObj.AddComponent<CastleUIManager>();
+            }
+        }
+        
+        Debug.Log("✓ UI Manager создан");
+        return uiManager;
+    }
+    
     CastleGameManager SetupGameManager(CastlePlayer player, HookController hook, 
-        CastleGameTouchController touchController, MonsterSpawner spawner)
+        CastleGameTouchController touchController, MonsterSpawner spawner, CastleUIManager uiManager)
     {
         GameObject gmObj = new GameObject("GameManager");
         CastleGameManager gm = gmObj.AddComponent<CastleGameManager>();
@@ -360,6 +386,7 @@ public class CastleSceneSetup : MonoBehaviour
         gm.hook = hook;
         gm.touchController = touchController;
         gm.monsterSpawner = spawner;
+        gm.uiManager = uiManager;
         gm.castlePosition = castlePosition;
         
         Debug.Log("✓ GameManager создан и все компоненты связаны");

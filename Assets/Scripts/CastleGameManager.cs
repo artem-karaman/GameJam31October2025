@@ -12,6 +12,7 @@ public class CastleGameManager : MonoBehaviour
     public HookController hook;
     public CastleGameTouchController touchController;
     public MonsterSpawner monsterSpawner;
+    public CastleUIManager uiManager;
     
     [Header("Castle Settings")]
     public Vector2 castlePosition = Vector2.zero;
@@ -31,6 +32,18 @@ public class CastleGameManager : MonoBehaviour
     void Start()
     {
         SetupGame();
+        
+        // Ищем UI Manager если он не назначен
+        if (uiManager == null)
+        {
+            uiManager = CastleUIManager.Instance;
+            if (uiManager == null)
+            {
+                // Создаем UI Manager если его нет
+                GameObject uiManagerObj = new GameObject("UIManager");
+                uiManager = uiManagerObj.AddComponent<CastleUIManager>();
+            }
+        }
     }
     
     void Update()
@@ -40,6 +53,24 @@ public class CastleGameManager : MonoBehaviour
         {
             monsterSpawner.CycleMonsterAnimations();
         }
+        
+        // Периодически проверяем победу (на случай если монстры исчезли другим способом)
+        // Проверяем не каждый кадр, а раз в секунду (60 кадров)
+        if (Time.frameCount % 60 == 0 && uiManager != null && monsterSpawner != null)
+        {
+            CheckVictoryCondition();
+        }
+    }
+    
+    /// <summary>
+    /// Проверяет условие победы (все монстры побеждены)
+    /// </summary>
+    void CheckVictoryCondition()
+    {
+        if (uiManager == null || monsterSpawner == null || monsterSpawner.ActiveMonsters == null) return;
+        
+        // Проверяем победу через UI Manager (он отслеживает количество убитых монстров)
+        uiManager.CheckVictory();
     }
     
     void SetupGame()

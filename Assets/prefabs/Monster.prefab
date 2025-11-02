@@ -17,7 +17,7 @@ GameObject:
   - component: {fileID: 5308495682208704179}
   m_Layer: 0
   m_Name: Monster
-  m_TagString: Untagged
+  m_TagString: Monster
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -111,6 +111,9 @@ MonoBehaviour:
   lockYPosition: 0
   fixedY: 0
   animatorControllers: []
+  deathSound: {fileID: 8300000, guid: 74ba1e8d300a34d5ebc58cb36d811c51, type: 3}
+  deathSoundVolume: 1
+  autoCreateAudioSource: 1
 --- !u!61 &6153391233168237454
 BoxCollider2D:
   m_ObjectHideFlags: 0
