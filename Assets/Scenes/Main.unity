@@ -405,11 +405,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5614505100336366737, guid: c3675674cf12c4383a1f4c456661d380, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 646.6067
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5614505100336366737, guid: c3675674cf12c4383a1f4c456661d380, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 316.2201
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5614505100336366737, guid: c3675674cf12c4383a1f4c456661d380, type: 3}
       propertyPath: m_LocalPosition.x
@@ -421,7 +421,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5614505100336366737, guid: c3675674cf12c4383a1f4c456661d380, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -0.43586394
+      value: -0.4358635
       objectReference: {fileID: 0}
     - target: {fileID: 5614505100336366737, guid: c3675674cf12c4383a1f4c456661d380, type: 3}
       propertyPath: m_LocalRotation.w
@@ -445,7 +445,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5614505100336366737, guid: c3675674cf12c4383a1f4c456661d380, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -45
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5614505100336366737, guid: c3675674cf12c4383a1f4c456661d380, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -462,6 +462,10 @@ PrefabInstance:
     - target: {fileID: 5941261433149354177, guid: c3675674cf12c4383a1f4c456661d380, type: 3}
       propertyPath: m_Name
       value: VictoryScreen
+      objectReference: {fileID: 0}
+    - target: {fileID: 5941261433149354177, guid: c3675674cf12c4383a1f4c456661d380, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -2586,11 +2590,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerTransform: {fileID: 1017940523}
-  hookSpeed: 15
+  hookSpeed: 55
   retractSpeed: 15
   hookRadius: 0.6
   maxChainLength: 5
-  targetOffsetDown: 1
+  targetOffsetDown: 0
   arcHeight: 3
   arcPeakOffset: 0
   lineThickness: 0.035
