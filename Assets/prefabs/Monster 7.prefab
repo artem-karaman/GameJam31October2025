@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: -4798730069505926325}
   - component: {fileID: 5308495682208704179}
   m_Layer: 0
-  m_Name: Monster
+  m_Name: Monster 7
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -184,8 +184,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ecceb45930dd41638de469ed2d35a9fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  folderName: Mob1
-  newVideoName: walk
+  folderName: Mob7
+  newVideoName: run
   isOnceAnim: 0
 --- !u!328 &5308495682208704179
 VideoPlayer:
