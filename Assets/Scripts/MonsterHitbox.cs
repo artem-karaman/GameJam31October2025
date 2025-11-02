@@ -99,14 +99,14 @@ public class MonsterHitbox : MonoBehaviour
         
         if (spriteRenderer != null && spriteRenderer.sprite != null)
         {
-            // Используем уменьшенный размер спрайта (70% от исходного)
+            // Используем увеличенный размер спрайта (100% от исходного для более легкого попадания)
             Vector2 spriteSize = spriteRenderer.sprite.bounds.size;
-            boxCollider.size = spriteSize * 0.7f;
+            boxCollider.size = spriteSize * 1.0f; // Увеличено с 0.7f до 1.0f
         }
         else
         {
-            // Размер по умолчанию (уменьшенный)
-            boxCollider.size = new Vector2(0.7f, 0.7f);
+            // Размер по умолчанию (увеличенный)
+            boxCollider.size = new Vector2(1.0f, 1.0f); // Увеличено с 0.7f
         }
     }
     

@@ -21,8 +21,11 @@ public class HookUI : MonoBehaviour
     public float hookSpeed = 10f;
     [Tooltip("Скорость возврата крюка")]
     public float retractSpeed = 15f;
-    [Tooltip("Радиус для попадания в монстров (в пикселях)")]
-    public float hookRadius = 60f;
+    [Tooltip("Радиус для попадания в монстров в пикселях (увеличен для более легкого попадания)")]
+    public float hookRadius = 100f; // Увеличено с 60f для более легкого попадания
+    [Tooltip("Смещение вниз от точки тапа в пикселях (крюк прилетит чуть ниже точки клика)")]
+    [Range(0f, 200f)]
+    public float targetOffsetDown = 30f; // Крюк прилетает немного ниже точки тапа
     
     [Header("Line Settings")]
     [Tooltip("Толщина линии от игрока до крюка (в пикселях)")]
@@ -98,8 +101,8 @@ public class HookUI : MonoBehaviour
             hookCollider = gameObject.AddComponent<CircleCollider2D>();
         }
         hookCollider.isTrigger = true;
-        // Конвертируем радиус из пикселей в мировые единицы и уменьшаем (примерно 100 пикселей = 1 единица)
-        hookCollider.radius = (hookRadius * 0.4f) / 100f; // Уменьшаем до 40% от исходного размера
+        // Конвертируем радиус из пикселей в мировые единицы (примерно 100 пикселей = 1 единица)
+        hookCollider.radius = (hookRadius * 1.2f) / 100f; // Увеличиваем до 120% для более легкого попадания
         
         // Устанавливаем тег для упрощения обнаружения
         if (!gameObject.CompareTag("Hook"))
@@ -144,8 +147,12 @@ public class HookUI : MonoBehaviour
     {
         if (isFlying || isRetracting || playerRectTransform == null) return;
         
+        // Смещаем целевую позицию вниз (крюк прилетит чуть ниже точки тапа)
+        Vector2 adjustedTargetPos = targetPos;
+        adjustedTargetPos.y -= targetOffsetDown;
+        
         startPosition = playerRectTransform.anchoredPosition;
-        targetPosition = targetPos;
+        targetPosition = adjustedTargetPos; // Используем скорректированную позицию
         flightProgress = 0f;
         isFlying = true;
         isRetracting = false;

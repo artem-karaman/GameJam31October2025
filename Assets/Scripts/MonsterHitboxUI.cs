@@ -103,14 +103,14 @@ public class MonsterHitboxUI : MonoBehaviour
         if (rectTransform != null)
         {
             // Используем sizeDelta для размера коллайдера (в мировых единицах)
-            // Конвертируем пиксели в мировые единицы и уменьшаем (примерно 100 пикселей = 1 единица)
+            // Конвертируем пиксели в мировые единицы (примерно 100 пикселей = 1 единица)
             Vector2 sizeInWorldUnits = rectTransform.sizeDelta / 100f;
-            boxCollider.size = sizeInWorldUnits * 0.7f; // Уменьшаем до 70% от исходного размера
+            boxCollider.size = sizeInWorldUnits * 1.0f; // Увеличено с 0.7f до 1.0f для более легкого попадания
         }
         else
         {
-            // Размер по умолчанию (уменьшенный)
-            boxCollider.size = new Vector2(0.448f, 0.448f); // 70% от 0.64
+            // Размер по умолчанию (увеличенный)
+            boxCollider.size = new Vector2(0.64f, 0.64f); // Увеличено с 0.448f (70%) до 1.0f
         }
     }
     

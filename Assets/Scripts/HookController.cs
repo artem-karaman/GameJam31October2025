@@ -16,10 +16,13 @@ public class HookController : MonoBehaviour
     public float hookSpeed = 2f; // Уменьшено для лучшей видимости кривой
     [Tooltip("Скорость возврата крюка")]
     public float retractSpeed = 15f;
-    [Tooltip("Радиус для попадания в монстров")]
-    public float hookRadius = 0.6f;
+    [Tooltip("Радиус для попадания в монстров (увеличен для более легкого попадания)")]
+    public float hookRadius = 1.0f; // Увеличено с 0.6f для более легкого попадания
     [Tooltip("Максимальная длина цепи (радиус круга для полета)")]
     public float maxChainLength = 5f;
+    [Tooltip("Смещение вниз от точки тапа (крюк прилетит чуть ниже точки клика)")]
+    [Range(0f, 2f)]
+    public float targetOffsetDown = 0.3f; // Крюк прилетает немного ниже точки тапа
     
     [Header("Arc Settings")]
     [Tooltip("Высота дуги полета (в мировых единицах)")]
@@ -144,8 +147,8 @@ public class HookController : MonoBehaviour
             hookCollider = gameObject.AddComponent<CircleCollider2D>();
         }
         hookCollider.isTrigger = true;
-        // Уменьшенный радиус для более точного попадания
-        hookCollider.radius = hookRadius * 0.4f; // Уменьшаем до 40% от исходного размера
+        // Увеличенный радиус коллайдера для более легкого попадания
+        hookCollider.radius = hookRadius * 1.2f; // Увеличиваем до 120% для более легкого попадания
         // Устанавливаем тег для упрощения обнаружения
         if (!gameObject.CompareTag("Hook"))
         {
@@ -389,8 +392,12 @@ public class HookController : MonoBehaviour
     {
         if (isFlying || isRetracting || playerTransform == null) return;
         
-        // Сохраняем позицию тапа
+        // Сохраняем оригинальную позицию тапа
         tapWorldPosition = targetWorldPos;
+        
+        // Смещаем целевую позицию вниз (крюк прилетит чуть ниже точки тапа)
+        Vector3 adjustedTargetPos = targetWorldPos;
+        adjustedTargetPos.y -= targetOffsetDown;
         
         // Центр объекта (игрока)
         playerCenter = playerTransform.position;
@@ -399,21 +406,21 @@ public class HookController : MonoBehaviour
         Vector3 handPosition = playerCenter + (castDirectionRight ? Vector3.right : Vector3.left) * 0.3f;
         
         // Определяем сторону тапа относительно героя (лево/право)
-        Vector3 toTarget = targetWorldPos - playerCenter;
+        Vector3 toTarget = adjustedTargetPos - playerCenter;
         castDirectionRight = toTarget.x > 0; // true = вправо, false = влево
         
         // Обновляем позицию руки с правильным направлением
         handPosition = playerCenter + (castDirectionRight ? Vector3.right : Vector3.left) * 0.3f;
         
-        // Вычисляем точки для кривой Безье
+        // Вычисляем точки для кривой Безье (используем скорректированную позицию)
         bezierStartPos = handPosition;
-        bezierEndPos = targetWorldPos;
+        bezierEndPos = adjustedTargetPos;
         
         // ======================= ИСПРАВЛЕННЫЙ РАСЧЁТ ДУГИ =======================
 
 // Ограничиваем дальность броска
-        // Определяем направление до цели
-        Vector3 dir = targetWorldPos - handPosition;
+        // Определяем направление до цели (используем скорректированную позицию)
+        Vector3 dir = adjustedTargetPos - handPosition;
         float distance = dir.magnitude;
 
 // Используем maxChainLength только для расчёта формы дуги (высота)
@@ -421,11 +428,11 @@ public class HookController : MonoBehaviour
         float height = Mathf.Clamp(clampedDistance * 0.3f, 1f, 4f);
 
 // Определяем сторону дуги (влево/вправо)
-        float direction = (targetWorldPos.x > playerCenter.x) ? 1f : -1f;
+        float direction = (adjustedTargetPos.x > playerCenter.x) ? 1f : -1f;
         Vector3 perpendicular = Vector3.Cross(Vector3.forward, dir.normalized);
 
-// Средняя точка дуги (от руки к цели) — теперь всегда доходит до точки тапа!
-        bezierEndPos = targetWorldPos;
+// Средняя точка дуги (от руки к цели) — теперь всегда доходит до скорректированной точки тапа!
+        bezierEndPos = adjustedTargetPos;
         bezierMidPoint = handPosition + dir * 0.5f + perpendicular * direction * height + Vector3.up * height * 0.7f;
 
         // Приблизительно: расстояние старт->середина + середина->конец
@@ -770,9 +777,9 @@ public class HookController : MonoBehaviour
     
     /// <summary>
     /// Вычисляет позиции точек для цепи:
-    /// - Во время полета (Stretching/Falling): ровная прямая линия от руки до крюка
-    /// - В покое: провисание под действием силы тяжести
-    /// - Во время возврата: ровная прямая линия
+    /// - Во время полета (Stretching/Falling): кривая Безье от руки до крюка
+    /// - В покое: провисание под действием силы тяжести (через кривую Безье)
+    /// - Во время возврата: прямая линия
     /// </summary>
     void CalculateSaggingChain(Vector3 start, Vector3 end, bool isAtRest = false)
     {
@@ -782,17 +789,28 @@ public class HookController : MonoBehaviour
         
         int points = Mathf.Max(chainPoints, 2); // Минимум 2 точки
         
-        // Во время полета (Stretching/Falling) или возврата - прямая линия
-        if (isFlying || isRetracting)
+        // Во время полета - используем кривую Безье
+        if (isFlying)
         {
-            // РОВНАЯ ПРЯМАЯ ЛИНИЯ от руки до крюка
+            // Используем те же точки Безье, что и для движения крюка
+            // bezierMidPoint уже вычислена при запуске полета
+            for (int i = 0; i < points; i++)
+            {
+                float t = i / (float)(points - 1);
+                // Используем квадратичную кривую Безье с контрольными точками
+                Vector3 bezierPos = GetBezierPoint(start, bezierMidPoint, end, t);
+                lineRenderer.SetPosition(i, bezierPos);
+            }
+            return;
+        }
+        
+        // Во время возврата - прямая линия
+        if (isRetracting)
+        {
             for (int i = 0; i < points; i++)
             {
                 float t = i / (float)(points - 1);
                 Vector3 linearPos = Vector3.Lerp(start, end, t);
-                // добавим лёгкое провисание при полёте
-                float sag = Mathf.Sin(Mathf.PI * t) * chainSagAmount * 0.2f;
-                linearPos.y -= sag;
                 lineRenderer.SetPosition(i, linearPos);
             }
             return;
@@ -818,24 +836,17 @@ public class HookController : MonoBehaviour
                 sagHeight *= Mathf.Clamp01(1f + heightDiff / (Mathf.Max(horizontalDistance, 0.5f) * 0.5f));
             }
             
-            // Кривая провисания (параболическая форма)
-            float sagCurve = 4.5f;
+            // Средняя контрольная точка для кривой Безье (внизу для провисания)
+            Vector3 midPoint = (start + end) / 2f;
+            midPoint.y -= sagHeight; // Опускаем среднюю точку вниз для провисания
             
-            // Создаем точки цепи с провисанием
+            // Создаем точки цепи с провисанием через кривую Безье
             for (int i = 0; i < points; i++)
             {
                 float t = i / (float)(points - 1); // От 0 до 1
-                
-                // Линейная интерполяция по X и Z
-                Vector3 linearPos = Vector3.Lerp(start, end, t);
-                
-                // Добавляем провисание по Y (параболическая форма)
-                float sagY = sagCurve * sagHeight * t * (1f - t);
-                
-                // Применяем провисание (опускаем цепь вниз)
-                linearPos.y -= sagY;
-                
-                lineRenderer.SetPosition(i, linearPos);
+                // Используем квадратичную кривую Безье с контрольной точкой внизу
+                Vector3 bezierPos = GetBezierPoint(start, midPoint, end, t);
+                lineRenderer.SetPosition(i, bezierPos);
             }
         }
         else
